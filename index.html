@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Code Vault</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen p-6">
+
+  <h1 class="text-3xl font-bold mb-4">💾 Code Vault</h1>
+
+  <!-- Input -->
+  <div class="bg-gray-800 p-4 rounded mb-4">
+    <input id="title" placeholder="Enter title..." 
+      class="w-full p-2 mb-2 rounded bg-gray-700">
+
+    <textarea id="code" rows="6" placeholder="Paste your code..." 
+      class="w-full p-2 mb-2 rounded bg-gray-700"></textarea>
+
+    <button onclick="saveCode()" 
+      class="bg-blue-500 px-4 py-2 rounded">Save</button>
+  </div>
+
+  <!-- Output -->
+  <h2 class="text-xl mb-2">Saved Codes</h2>
+  <div id="list"></div>
+
+  <script>
+    function getCodes() {
+      return JSON.parse(localStorage.getItem('codes') || '[]');
+    }
+
+    function saveCode() {
+      const title = document.getElementById('title').value;
+      const code = document.getElementById('code').value;
+
+      if (!title || !code) {
+        alert("Enter both fields");
+        return;
+      }
+
+      const codes = getCodes();
+      codes.push({ title, code });
+
+      localStorage.setItem('codes', JSON.stringify(codes));
+
+      document.getElementById('title').value = "";
+      document.getElementById('code').value = "";
+
+      displayCodes();
+    }
+
+    function deleteCode(index) {
+      const codes = getCodes();
+      codes.splice(index, 1);
+      localStorage.setItem('codes', JSON.stringify(codes));
+      displayCodes();
+    }
+
+    function copyCode(text) {
+      navigator.clipboard.writeText(text);
+      alert("Copied!");
+    }
+
+    function displayCodes() {
+      const codes = getCodes();
+      const list = document.getElementById('list');
+      list.innerHTML = "";
+
+      codes.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = "bg-gray-800 p-4 mb-2 rounded";
+
+        div.innerHTML = `
+          <h3 class="font-bold">${item.title}</h3>
+          <pre class="bg-gray-700 p-2 rounded overflow-x-auto">${item.code}</pre>
+          <button onclick="copyCode(\`${item.code}\`)" class="mt-2 bg-green-500 px-2 py-1 rounded mr-2">Copy</button>
+          <button onclick="deleteCode(${index})" class="mt-2 bg-red-500 px-2 py-1 rounded">Delete</button>
+        `;
+
+        list.appendChild(div);
+      });
+    }
+
+    displayCodes();
+  </script>
+
+</body>
+</html>
