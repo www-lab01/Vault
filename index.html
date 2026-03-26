@@ -2,121 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Code Vault Cloud</title>
+  <title>DevVault Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-900 text-white min-h-screen p-6">
+<body class="bg-gray-950 text-white min-h-screen p-6">
 
-  <h1 class="text-3xl font-bold mb-4">M4</h1>
-
-  <!-- Input -->
-  <div class="bg-gray-800 p-4 rounded mb-4">
-    <input id="title" placeholder="Enter title..." 
-      class="w-full p-2 mb-2 rounded bg-gray-700">
-
-    <textarea id="code" rows="6" placeholder="Paste your code..." 
-      class="w-full p-2 mb-2 rounded bg-gray-700"></textarea>
-
-    <button onclick="saveCode()" 
-      class="bg-blue-500 px-4 py-2 rounded">Save</button>
+  <!-- HEADER -->
+  <div class="flex items-center gap-3 mb-6">
+    <div class="text-3xl">⚡</div>
+    <h1 class="text-3xl font-bold">DevVault Pro</h1>
   </div>
 
-  <!-- Output -->
-  <h2 class="text-xl mb-2">Saved Codes</h2>
+  <!-- INPUT -->
+  <div class="bg-gray-900 p-4 rounded-xl mb-6 shadow-lg">
+
+    <input id="title" placeholder="Title..." 
+      class="w-full p-2 mb-2 rounded bg-gray-800">
+
+    <select id="category" class="w-full p-2 mb-2 rounded bg-gray-800">
+      <option>Java</option>
+      <option>Web</option>
+      <option>DSA</option>
+      <option>Notes</option>
+    </select>
+
+    <textarea id="code" rows="5" placeholder="Paste code..." 
+      class="w-full p-2 mb-2 rounded bg-gray-800"></textarea>
+
+    <input type="file" id="imageInput" class="mb-2">
+
+    <button onclick="saveCode()" 
+      class="bg-blue-600 px-4 py-2 rounded">Save</button>
+  </div>
+
+  <!-- SEARCH -->
+  <input id="search" placeholder="Search..." 
+    class="w-full p-2 mb-4 rounded bg-gray-800"
+    oninput="displayCodes()">
+
+  <!-- OUTPUT -->
   <div id="list"></div>
 
-  <script>
-    const API_KEY = "$2a$10$5SepU9r2PraMpGxplhm/Cu7O03sM2xA4p32tLGV0dQzhrnwl1S33K";
-    const BIN_ID = "69c2c25eb7ec241ddc9c01f5";
+<script>
+const API_KEY = "$2a$10$5SepU9r2PraMpGxplhm/Cu7O03sM2xA4p32tLGV0dQzhrnwl1S33K";
+const BIN_ID = "69c2c25eb7ec241ddc9c01f5";
 
-    // GET DATA
-    async function getCodes() {
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-        headers: { "X-Master-Key": API_KEY }
-      });
-      const data = await res.json();
-      return data.record.codes || [];
-    }
+async function getCodes() {
+  const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+    headers: { "X-Master-Key": API_KEY }
+  });
+  const data = await res.json();
+  return data.record.codes || [];
+}
 
-    // SAVE CODE
-    async function saveCode() {
-      const title = document.getElementById('title').value;
-      const code = document.getElementById('code').value;
+async function saveCode() {
+  const title = document.getElementById('title').value;
+  const code = document.getElementById('code').value;
+  const category = document.getElementById('category').value;
+  const file = document.getElementById('imageInput').files[0];
 
-      if (!title || !code) {
-        alert("Enter both fields");
-        return;
-      }
+  if (!title || !code) return alert("Fill all fields");
 
-      const codes = await getCodes();
-      codes.push({ title, code });
+  let imageBase64 = "";
 
-      await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Master-Key": API_KEY
-        },
-        body: JSON.stringify({ codes })
-      });
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      imageBase64 = e.target.result;
+      await storeData(title, code, category, imageBase64);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    await storeData(title, code, category, "");
+  }
+}
 
-      document.getElementById('title').value = "";
-      document.getElementById('code').value = "";
+async function storeData(title, code, category, image) {
+  const codes = await getCodes();
+  codes.push({ title, code, category, image });
 
-      displayCodes();
-    }
+  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": API_KEY
+    },
+    body: JSON.stringify({ codes })
+  });
 
-    // DELETE CODE
-    async function deleteCode(index) {
-      const codes = await getCodes();
-      codes.splice(index, 1);
+  document.getElementById('title').value = "";
+  document.getElementById('code').value = "";
 
-      await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Master-Key": API_KEY
-        },
-        body: JSON.stringify({ codes })
-      });
+  displayCodes();
+}
 
-      displayCodes();
-    }
+async function deleteCode(index) {
+  const codes = await getCodes();
+  codes.splice(index, 1);
 
-    // DISPLAY
-    async function displayCodes() {
-      const codes = await getCodes();
-      const list = document.getElementById('list');
-      list.innerHTML = "";
+  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": API_KEY
+    },
+    body: JSON.stringify({ codes })
+  });
 
-      codes.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = "bg-gray-800 p-4 mb-2 rounded";
+  displayCodes();
+}
 
-        const title = document.createElement('h3');
-        title.className = "font-bold";
-        title.innerText = item.title;
+function copyCode(text) {
+  navigator.clipboard.writeText(text);
+  alert("Copied!");
+}
 
-        const pre = document.createElement('pre');
-        pre.className = "bg-gray-700 p-2 rounded overflow-x-auto";
-        pre.innerText = item.code;
+async function displayCodes() {
+  const codes = await getCodes();
+  const search = document.getElementById('search').value.toLowerCase();
+  const list = document.getElementById('list');
+  list.innerHTML = "";
 
-        const delBtn = document.createElement('button');
-        delBtn.innerText = "Delete";
-        delBtn.className = "mt-2 bg-red-500 px-2 py-1 rounded";
-        delBtn.onclick = () => deleteCode(index);
+  codes
+    .filter(item => 
+      item.title.toLowerCase().includes(search) ||
+      item.code.toLowerCase().includes(search) ||
+      item.category.toLowerCase().includes(search)
+    )
+    .forEach((item, index) => {
+      const div = document.createElement('div');
+      div.className = "bg-gray-900 p-4 mb-3 rounded-xl shadow";
 
-        div.appendChild(title);
-        div.appendChild(pre);
-        div.appendChild(delBtn);
+      div.innerHTML = `
+        <div class="flex justify-between">
+          <h3 class="font-bold">${item.title}</h3>
+          <span class="text-sm text-gray-400">${item.category}</span>
+        </div>
 
-        list.appendChild(div);
-      });
-    }
+        <pre class="bg-gray-800 p-2 mt-2 rounded overflow-x-auto">${item.code}</pre>
 
-    displayCodes();
-  </script>
+        ${item.image ? `<img src="${item.image}" class="mt-2 rounded max-h-40">` : ""}
+
+        <div class="mt-2">
+          <button onclick="copyCode(\`${item.code}\`)" class="bg-green-500 px-2 py-1 rounded mr-2">Copy</button>
+          <button onclick="deleteCode(${index})" class="bg-red-500 px-2 py-1 rounded">Delete</button>
+        </div>
+      `;
+
+      list.appendChild(div);
+    });
+}
+
+displayCodes();
+</script>
 
 </body>
 </html>
