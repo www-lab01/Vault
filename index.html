@@ -1,160 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>DevVault Pro</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>DevVault IDE</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-950 text-white min-h-screen p-6">
+<body class="bg-[#1e1e1e] text-white flex h-screen">
 
-  <!-- HEADER -->
-  <div class="flex items-center gap-3 mb-6">
-    <div class="text-3xl">⚡</div>
-    <h1 class="text-3xl font-bold">DevVault Pro</h1>
+<!-- SIDEBAR -->
+<div class="w-60 bg-[#252526] p-3">
+  <h2 class="text-lg font-bold mb-3">📁 Explorer</h2>
+
+  <div class="space-y-2 text-sm">
+    <div onclick="filterCategory('All')" class="cursor-pointer hover:text-blue-400">All Files</div>
+    <div onclick="filterCategory('Java')" class="cursor-pointer">Java</div>
+    <div onclick="filterCategory('Web')" class="cursor-pointer">Web</div>
+    <div onclick="filterCategory('DSA')" class="cursor-pointer">DSA</div>
+    <div onclick="filterCategory('Notes')" class="cursor-pointer">Notes</div>
   </div>
 
-  <!-- INPUT -->
-  <div class="bg-gray-900 p-4 rounded-xl mb-6 shadow-lg">
+  <hr class="my-3 border-gray-700">
 
-    <input id="title" placeholder="Title..." 
-      class="w-full p-2 mb-2 rounded bg-gray-800">
+  <div id="fileList"></div>
+</div>
 
-    <select id="category" class="w-full p-2 mb-2 rounded bg-gray-800">
-      <option>Java</option>
-      <option>Web</option>
-      <option>DSA</option>
-      <option>Notes</option>
-    </select>
+<!-- MAIN -->
+<div class="flex-1 flex flex-col">
 
-    <textarea id="code" rows="5" placeholder="Paste code..." 
-      class="w-full p-2 mb-2 rounded bg-gray-800"></textarea>
-
-    <input type="file" id="imageInput" class="mb-2">
-
-    <button onclick="saveCode()" 
-      class="bg-blue-600 px-4 py-2 rounded">Save</button>
+  <!-- TOP BAR -->
+  <div class="bg-[#333] px-4 py-2 flex justify-between items-center">
+    <span id="currentFile">No file selected</span>
+    <button onclick="saveNew()" class="bg-blue-600 px-3 py-1 rounded">+ New</button>
   </div>
 
-  <!-- SEARCH -->
-  <input id="search" placeholder="Search..." 
-    class="w-full p-2 mb-4 rounded bg-gray-800"
-    oninput="displayCodes()">
+  <!-- EDITOR -->
+  <textarea id="editor" class="flex-1 bg-[#1e1e1e] p-4 outline-none font-mono text-sm"></textarea>
 
-  <!-- OUTPUT -->
-  <div id="list"></div>
+  <!-- ACTION BAR -->
+  <div class="bg-[#252526] p-2 flex gap-2">
+    <button onclick="updateFile()" class="bg-green-600 px-3 py-1 rounded">Save</button>
+    <button onclick="deleteFile()" class="bg-red-600 px-3 py-1 rounded">Delete</button>
+  </div>
+
+</div>
 
 <script>
 const API_KEY = "$2a$10$5SepU9r2PraMpGxplhm/Cu7O03sM2xA4p32tLGV0dQzhrnwl1S33K";
 const BIN_ID = "69c2c25eb7ec241ddc9c01f5";
 
-async function getCodes() {
+let files = [];
+let currentIndex = null;
+let currentCategory = "All";
+
+// FETCH
+async function loadFiles() {
   const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
     headers: { "X-Master-Key": API_KEY }
   });
   const data = await res.json();
-  return data.record.codes || [];
+  files = data.record.codes || [];
+  renderList();
 }
 
-async function saveCode() {
-  const title = document.getElementById('title').value;
-  const code = document.getElementById('code').value;
-  const category = document.getElementById('category').value;
-  const file = document.getElementById('imageInput').files[0];
-
-  if (!title || !code) return alert("Fill all fields");
-
-  let imageBase64 = "";
-
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      imageBase64 = e.target.result;
-      await storeData(title, code, category, imageBase64);
-    };
-    reader.readAsDataURL(file);
-  } else {
-    await storeData(title, code, category, "");
-  }
-}
-
-async function storeData(title, code, category, image) {
-  const codes = await getCodes();
-  codes.push({ title, code, category, image });
-
-  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Master-Key": API_KEY
-    },
-    body: JSON.stringify({ codes })
-  });
-
-  document.getElementById('title').value = "";
-  document.getElementById('code').value = "";
-
-  displayCodes();
-}
-
-async function deleteCode(index) {
-  const codes = await getCodes();
-  codes.splice(index, 1);
-
-  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Master-Key": API_KEY
-    },
-    body: JSON.stringify({ codes })
-  });
-
-  displayCodes();
-}
-
-function copyCode(text) {
-  navigator.clipboard.writeText(text);
-  alert("Copied!");
-}
-
-async function displayCodes() {
-  const codes = await getCodes();
-  const search = document.getElementById('search').value.toLowerCase();
-  const list = document.getElementById('list');
+// RENDER SIDEBAR FILES
+function renderList() {
+  const list = document.getElementById("fileList");
   list.innerHTML = "";
 
-  codes
-    .filter(item => 
-      item.title.toLowerCase().includes(search) ||
-      item.code.toLowerCase().includes(search) ||
-      item.category.toLowerCase().includes(search)
-    )
-    .forEach((item, index) => {
-      const div = document.createElement('div');
-      div.className = "bg-gray-900 p-4 mb-3 rounded-xl shadow";
+  files
+    .filter(f => currentCategory === "All" || f.category === currentCategory)
+    .forEach((file, index) => {
+      const div = document.createElement("div");
+      div.className = "cursor-pointer text-sm p-1 hover:bg-gray-700";
 
-      div.innerHTML = `
-        <div class="flex justify-between">
-          <h3 class="font-bold">${item.title}</h3>
-          <span class="text-sm text-gray-400">${item.category}</span>
-        </div>
-
-        <pre class="bg-gray-800 p-2 mt-2 rounded overflow-x-auto">${item.code}</pre>
-
-        ${item.image ? `<img src="${item.image}" class="mt-2 rounded max-h-40">` : ""}
-
-        <div class="mt-2">
-          <button onclick="copyCode(\`${item.code}\`)" class="bg-green-500 px-2 py-1 rounded mr-2">Copy</button>
-          <button onclick="deleteCode(${index})" class="bg-red-500 px-2 py-1 rounded">Delete</button>
-        </div>
-      `;
+      div.innerText = "📄 " + file.title;
+      div.onclick = () => openFile(index);
 
       list.appendChild(div);
     });
 }
 
-displayCodes();
+// OPEN FILE
+function openFile(index) {
+  currentIndex = index;
+  document.getElementById("editor").value = files[index].code;
+  document.getElementById("currentFile").innerText = files[index].title;
+}
+
+// FILTER
+function filterCategory(cat) {
+  currentCategory = cat;
+  renderList();
+}
+
+// NEW FILE
+function saveNew() {
+  const name = prompt("Enter file name:");
+  const category = prompt("Category (Java/Web/DSA/Notes):") || "Notes";
+
+  if (!name) return;
+
+  files.push({ title: name, code: "", category });
+  currentIndex = files.length - 1;
+
+  saveToCloud();
+}
+
+// UPDATE FILE
+function updateFile() {
+  if (currentIndex === null) return alert("Select file");
+
+  files[currentIndex].code = document.getElementById("editor").value;
+  saveToCloud();
+}
+
+// DELETE FILE
+function deleteFile() {
+  if (currentIndex === null) return;
+
+  files.splice(currentIndex, 1);
+  currentIndex = null;
+
+  document.getElementById("editor").value = "";
+  document.getElementById("currentFile").innerText = "No file selected";
+
+  saveToCloud();
+}
+
+// SAVE TO CLOUD
+async function saveToCloud() {
+  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": API_KEY
+    },
+    body: JSON.stringify({ codes: files })
+  });
+
+  renderList();
+}
+
+// INIT
+loadFiles();
 </script>
 
 </body>
