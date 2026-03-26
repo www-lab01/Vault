@@ -3,41 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CollegeHub - Your College Social Network</title>
+    <title>CollegeHub - Official College Social Network</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loader">
+            <i class="fas fa-graduation-cap"></i>
+            <p>Loading CollegeHub...</p>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification hidden">
+        <span id="notificationText"></span>
+        <button onclick="hideNotification()">&times;</button>
+    </div>
+
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <i class="fas fa-graduation-cap"></i>
+                <i class="fas fa-university"></i>
                 <span>CollegeHub</span>
             </div>
             <div class="nav-search">
-                <input type="text" id="searchInput" placeholder="Search posts, people...">
-                <i class="fas fa-search"></i>
+                <input type="text" id="globalSearch" placeholder="🔍 Search posts, notes, people...">
             </div>
-            <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="feed"><i class="fas fa-home"></i> Feed</button>
-                <button class="nav-tab" data-tab="notes"><i class="fas fa-book"></i> Notes</button>
-                <button class="nav-tab" data-tab="youtube"><i class="fab fa-youtube"></i> Videos</button>
-                <button class="nav-tab" data-tab="chat"><i class="fab fa-whatsapp"></i> Chat</button>
-                <button class="nav-tab" data-tab="updates"><i class="fas fa-bullhorn"></i> Updates</button>
-                <button class="nav-tab" data-tab="complaints"><i class="fas fa-exclamation-triangle"></i> Complaints</button>
+            <div class="nav-tabs" id="navTabs">
+                <button class="nav-tab active" data-tab="feed"><i class="fas fa-rss"></i></button>
+                <button class="nav-tab" data-tab="notes"><i class="fas fa-book"></i></button>
+                <button class="nav-tab" data-tab="videos"><i class="fab fa-youtube"></i></button>
+                <button class="nav-tab" data-tab="chat"><i class="fab fa-whatsapp"></i></button>
+                <button class="nav-tab" data-tab="updates"><i class="fas fa-bullhorn"></i></button>
+                <button class="nav-tab" data-tab="complaints"><i class="fas fa-exclamation-triangle"></i></button>
             </div>
             <div class="nav-user">
-                <img src="https://via.placeholder.com/40" alt="Profile" id="userAvatar" class="avatar">
-                <span id="userName">Student</span>
-                <div class="dropdown">
-                    <button class="dropdown-btn"><i class="fas fa-chevron-down"></i></button>
-                    <div class="dropdown-content">
-                        <a href="#" id="profileBtn"><i class="fas fa-user"></i> Profile</a>
-                        <a href="#" id="settingsBtn"><i class="fas fa-cog"></i> Settings</a>
-                        <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                    </div>
+                <button id="notificationBell" class="notification-btn">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notificationBadge">0</span>
+                </button>
+                <img src="https://ui-avatars.com/api/?name=Student&background=667eea" id="userAvatar" class="avatar">
+                <div class="user-info">
+                    <span id="userName">Login</span>
+                    <i class="fas fa-chevron-down dropdown-toggle"></i>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#" id="viewProfile"><i class="fas fa-user"></i> Profile</a>
+                    <a href="#" id="adminPanel" style="display:none"><i class="fas fa-crown"></i> Admin</a>
+                    <a href="#" id="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
             </div>
         </div>
@@ -45,70 +63,101 @@
 
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Feed Tab -->
+        <!-- Feed -->
         <div id="feed" class="tab-content active">
-            <div class="create-post">
-                <textarea id="postContent" placeholder="What's happening in college today? 📚✨"></textarea>
-                <div class="post-actions">
-                    <input type="file" id="postImage" accept="image/*" style="display:none">
-                    <button onclick="document.getElementById('postImage').click()">
-                        <i class="fas fa-image"></i> Photo
+            <div class="create-section">
+                <div class="create-header">
+                    <img src="https://ui-avatars.com/api/?name=Student" class="avatar">
+                    <textarea id="postContent" placeholder="What's new in college today? 📚✨ #CollegeLife" rows="3"></textarea>
+                </div>
+                <div class="create-actions">
+                    <label class="action-btn">
+                        <i class="fas fa-image"></i>
+                        <input type="file" id="postImage" accept="image/*" capture="camera">
+                    </label>
+                    <label class="action-btn">
+                        <i class="fab fa-youtube"></i>
+                        <input type="url" id="postVideo" placeholder="YouTube URL">
+                    </label>
+                    <button class="post-btn" onclick="createPost()">
+                        <i class="fas fa-paper-plane"></i> Post
                     </button>
-                    <button onclick="createPost()">Post</button>
                 </div>
             </div>
-            <div id="postsContainer" class="posts-container"></div>
+            <div id="postsContainer"></div>
         </div>
 
-        <!-- Notes Tab -->
+        <!-- Notes -->
         <div id="notes" class="tab-content">
-            <div class="notes-header">
-                <h2>📚 Study Notes</h2>
-                <button class="btn-primary" onclick="showNoteModal()">+ New Note</button>
+            <div class="section-header">
+                <h2><i class="fas fa-book"></i> Study Notes</h2>
+                <button class="fab-btn" onclick="showNoteModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
             </div>
-            <div id="notesContainer" class="notes-grid"></div>
+            <div class="filter-bar">
+                <select id="noteFilter">
+                    <option value="">All Subjects</option>
+                    <option value="CS">Computer Science</option>
+                    <option value="ECE">Electronics</option>
+                    <option value="MECH">Mechanical</option>
+                    <option value="CIVIL">Civil</option>
+                    <option value="MATH">Mathematics</option>
+                </select>
+            </div>
+            <div id="notesContainer" class="cards-grid"></div>
         </div>
 
-        <!-- YouTube Tab -->
-        <div id="youtube" class="tab-content">
-            <div class="video-header">
-                <h2>🎥 College Videos</h2>
-                <button class="btn-primary" onclick="showVideoModal()">+ Upload Video</button>
+        <!-- Videos -->
+        <div id="videos" class="tab-content">
+            <div class="section-header">
+                <h2><i class="fab fa-youtube"></i> College Videos</h2>
+                <button class="fab-btn" onclick="showVideoModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
             </div>
             <div id="videosContainer" class="videos-grid"></div>
         </div>
 
-        <!-- Chat Tab -->
-        <div id="chat" class="tab-content">
-            <div class="chat-header">
-                <h2>💬 College Chat</h2>
-                <select id="chatRooms">
-                    <option value="general">General Chat</option>
-                    <option value="cs">Computer Science</option>
-                    <option value="mech">Mechanical</option>
-                    <option value="ece">ECE</option>
-                </select>
+        <!-- Chat -->
+        <div id="chat" class="tab-content full-height">
+            <div class="chat-sidebar">
+                <div class="chat-room active" data-room="general">
+                    <i class="fas fa-comments"></i> General
+                </div>
+                <div class="chat-room" data-room="cs">
+                    <i class="fas fa-laptop-code"></i> CS Dept
+                </div>
+                <div class="chat-room" data-room="ece">
+                    <i class="fas fa-microchip"></i> ECE Dept
+                </div>
             </div>
-            <div id="chatMessages" class="chat-messages"></div>
-            <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="Type a message...">
-                <button onclick="sendMessage()">Send</button>
+            <div class="chat-main">
+                <div id="chatMessages" class="chat-messages"></div>
+                <div class="chat-input-container">
+                    <input type="text" id="chatInput" placeholder="Type message...">
+                    <button onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Updates Tab -->
+        <!-- Updates -->
         <div id="updates" class="tab-content">
-            <div class="updates-header">
-                <h2>📢 Official Updates</h2>
+            <div class="section-header">
+                <h2><i class="fas fa-bullhorn"></i> Official Updates</h2>
             </div>
             <div id="updatesContainer"></div>
         </div>
 
-        <!-- Complaints Tab -->
+        <!-- Complaints -->
         <div id="complaints" class="tab-content">
-            <div class="complaints-header">
-                <h2>⚠️ Complaints & Feedback</h2>
-                <button class="btn-warning" onclick="showComplaintModal()">+ New Complaint</button>
+            <div class="section-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> Complaints</h2>
+                <button class="fab-btn danger" onclick="showComplaintModal()">
+                    <i class="fas fa-plus"></i>
+                </button>
             </div>
             <div id="complaintsContainer"></div>
         </div>
@@ -117,30 +166,74 @@
     <!-- Modals -->
     <div id="noteModal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h3>New Study Note</h3>
-            <input type="text" id="noteTitle" placeholder="Note Title">
-            <textarea id="noteContent" placeholder="Note content..."></textarea>
-            <select id="noteSubject">
-                <option value="cs">Computer Science</option>
-                <option value="math">Mathematics</option>
-                <option value="physics">Physics</option>
-            </select>
-            <button onclick="saveNote()">Save Note</button>
+            <div class="modal-header">
+                <h3>New Study Note</h3>
+                <span class="close" onclick="closeModal('noteModal')">&times;</span>
+            </div>
+            <form id="noteForm">
+                <input type="text" id="noteTitle" placeholder="Note Title *" required>
+                <select id="noteSubject" required>
+                    <option value="">Select Subject</option>
+                    <option value="CS">Computer Science</option>
+                    <option value="ECE">Electronics & Comm</option>
+                    <option value="MECH">Mechanical</option>
+                    <option value="CIVIL">Civil Engineering</option>
+                    <option value="MATH">Mathematics</option>
+                    <option value="PHYSICS">Physics</option>
+                </select>
+                <textarea id="noteContent" placeholder="Detailed notes..." rows="8" required></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('noteModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Video Modal -->
+    <div id="videoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Share Video</h3>
+                <span class="close" onclick="closeModal('videoModal')">&times;</span>
+            </div>
+            <input type="url" id="videoUrl" placeholder="https://youtube.com/watch?v=...">
+            <button class="btn-primary" onclick="saveVideo()">Share Video</button>
         </div>
     </div>
 
     <!-- Login Modal -->
-    <div id="loginModal" class="modal active">
-        <div class="modal-content login-modal">
-            <h2>Welcome to CollegeHub</h2>
-            <input type="text" id="loginStudentId" placeholder="Student ID">
-            <input type="password" id="loginPassword" placeholder="Password">
-            <button onclick="login()">Login</button>
-            <p>Demo: ID: STUDENT001, Pass: 123456</p>
+    <div id="loginModal" class="modal overlay-full">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h2>Welcome to <span class="brand">CollegeHub</span></h2>
+                <p>Connect with your college community</p>
+                <form id="loginForm">
+                    <div class="input-group">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" id="studentId" placeholder="Student ID" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="btn-primary full-width">Login</button>
+                </form>
+                <div class="demo-info">
+                    <strong>Demo Login:</strong><br>
+                    STUDENT001 / 123456<br>
+                    STUDENT002 / 123456
+                </div>
+            </div>
         </div>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Auto-hide loading after 2s
+        setTimeout(() => {
+            document.getElementById('loadingScreen').style.display = 'none';
+        }, 2000);
+    </script>
 </body>
 </html>
