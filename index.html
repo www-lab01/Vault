@@ -4,44 +4,42 @@
 <meta charset="UTF-8">
 <title>DevVault IDE</title>
 <script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Prism -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+
 </head>
 
 <body class="bg-[#1e1e1e] text-white flex h-screen">
 
 <!-- SIDEBAR -->
-<div class="w-60 bg-[#252526] p-3">
-  <h2 class="text-lg font-bold mb-3">📁 Explorer</h2>
-
-  <div class="space-y-2 text-sm">
-    <div onclick="filterCategory('All')" class="cursor-pointer hover:text-blue-400">All Files</div>
-    <div onclick="filterCategory('Java')" class="cursor-pointer">Java</div>
-    <div onclick="filterCategory('Web')" class="cursor-pointer">Web</div>
-    <div onclick="filterCategory('DSA')" class="cursor-pointer">DSA</div>
-    <div onclick="filterCategory('Notes')" class="cursor-pointer">Notes</div>
-  </div>
-
-  <hr class="my-3 border-gray-700">
-
-  <div id="fileList"></div>
+<div class="w-60 bg-[#252526] p-3 overflow-y-auto">
+  <h2 class="font-bold mb-3">📁 Explorer</h2>
+  <div id="fileTree"></div>
 </div>
 
 <!-- MAIN -->
 <div class="flex-1 flex flex-col">
 
-  <!-- TOP BAR -->
-  <div class="bg-[#333] px-4 py-2 flex justify-between items-center">
-    <span id="currentFile">No file selected</span>
-    <button onclick="saveNew()" class="bg-blue-600 px-3 py-1 rounded">+ New</button>
-  </div>
+  <!-- TABS -->
+  <div id="tabs" class="flex bg-[#2d2d2d] px-2"></div>
 
   <!-- EDITOR -->
-  <textarea id="editor" class="flex-1 bg-[#1e1e1e] p-4 outline-none font-mono text-sm"></textarea>
+  <textarea id="editor" class="flex-1 bg-[#1e1e1e] p-4 font-mono"></textarea>
 
   <!-- ACTION BAR -->
   <div class="bg-[#252526] p-2 flex gap-2">
-    <button onclick="updateFile()" class="bg-green-600 px-3 py-1 rounded">Save</button>
-    <button onclick="deleteFile()" class="bg-red-600 px-3 py-1 rounded">Delete</button>
+    <button onclick="saveFile()" class="bg-green-600 px-3 py-1 rounded">Save</button>
+    <button onclick="newFile()" class="bg-blue-600 px-3 py-1 rounded">New</button>
+    <button onclick="runJS()" class="bg-yellow-500 px-3 py-1 rounded">Run JS</button>
   </div>
+
+  <!-- OUTPUT -->
+  <div id="output" class="bg-black p-3 text-green-400 text-sm h-32 overflow-auto"></div>
 
 </div>
 
@@ -50,96 +48,97 @@ const API_KEY = "$2a$10$5SepU9r2PraMpGxplhm/Cu7O03sM2xA4p32tLGV0dQzhrnwl1S33K";
 const BIN_ID = "69c2c25eb7ec241ddc9c01f5";
 
 let files = [];
-let currentIndex = null;
-let currentCategory = "All";
+let openTabs = [];
+let currentFile = null;
 
-// FETCH
-async function loadFiles() {
+// LOAD
+async function loadFiles(){
   const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-    headers: { "X-Master-Key": API_KEY }
+    headers: {"X-Master-Key": API_KEY}
   });
   const data = await res.json();
   files = data.record.codes || [];
-  renderList();
+  renderTree();
 }
 
-// RENDER SIDEBAR FILES
-function renderList() {
-  const list = document.getElementById("fileList");
-  list.innerHTML = "";
+// TREE
+function renderTree(){
+  const tree = document.getElementById("fileTree");
+  tree.innerHTML = "";
 
-  files
-    .filter(f => currentCategory === "All" || f.category === currentCategory)
-    .forEach((file, index) => {
-      const div = document.createElement("div");
-      div.className = "cursor-pointer text-sm p-1 hover:bg-gray-700";
-
-      div.innerText = "📄 " + file.title;
-      div.onclick = () => openFile(index);
-
-      list.appendChild(div);
-    });
+  files.forEach((f,i)=>{
+    const div = document.createElement("div");
+    div.innerText = "📄 " + f.title;
+    div.className = "cursor-pointer hover:bg-gray-700 p-1";
+    div.onclick = ()=>openFile(i);
+    tree.appendChild(div);
+  });
 }
 
 // OPEN FILE
-function openFile(index) {
-  currentIndex = index;
-  document.getElementById("editor").value = files[index].code;
-  document.getElementById("currentFile").innerText = files[index].title;
+function openFile(i){
+  currentFile = i;
+
+  if(!openTabs.includes(i)){
+    openTabs.push(i);
+    renderTabs();
+  }
+
+  document.getElementById("editor").value = files[i].code;
 }
 
-// FILTER
-function filterCategory(cat) {
-  currentCategory = cat;
-  renderList();
+// TABS
+function renderTabs(){
+  const tabBar = document.getElementById("tabs");
+  tabBar.innerHTML = "";
+
+  openTabs.forEach(i=>{
+    const tab = document.createElement("div");
+    tab.innerText = files[i].title;
+    tab.className = "px-3 py-1 cursor-pointer bg-gray-700 mr-1";
+    tab.onclick = ()=>openFile(i);
+    tabBar.appendChild(tab);
+  });
+}
+
+// SAVE
+async function saveFile(){
+  if(currentFile===null) return;
+
+  files[currentFile].code = document.getElementById("editor").value;
+
+  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`,{
+    method:"PUT",
+    headers:{
+      "Content-Type":"application/json",
+      "X-Master-Key":API_KEY
+    },
+    body:JSON.stringify({codes:files})
+  });
 }
 
 // NEW FILE
-function saveNew() {
-  const name = prompt("Enter file name:");
-  const category = prompt("Category (Java/Web/DSA/Notes):") || "Notes";
+function newFile(){
+  const name = prompt("File name:");
+  if(!name) return;
 
-  if (!name) return;
+  files.push({title:name,code:""});
+  currentFile = files.length-1;
+  openTabs.push(currentFile);
 
-  files.push({ title: name, code: "", category });
-  currentIndex = files.length - 1;
-
-  saveToCloud();
+  renderTree();
+  renderTabs();
 }
 
-// UPDATE FILE
-function updateFile() {
-  if (currentIndex === null) return alert("Select file");
-
-  files[currentIndex].code = document.getElementById("editor").value;
-  saveToCloud();
-}
-
-// DELETE FILE
-function deleteFile() {
-  if (currentIndex === null) return;
-
-  files.splice(currentIndex, 1);
-  currentIndex = null;
-
-  document.getElementById("editor").value = "";
-  document.getElementById("currentFile").innerText = "No file selected";
-
-  saveToCloud();
-}
-
-// SAVE TO CLOUD
-async function saveToCloud() {
-  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Master-Key": API_KEY
-    },
-    body: JSON.stringify({ codes: files })
-  });
-
-  renderList();
+// RUN JS
+function runJS(){
+  try{
+    const code = document.getElementById("editor").value;
+    const result = eval(code);
+    document.getElementById("output").innerText = result || "Executed";
+  }catch(e){
+    document.getElementById("output").innerText = e;
+  }
 }
 
 // INIT
